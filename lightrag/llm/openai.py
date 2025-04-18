@@ -17,10 +17,11 @@ from openai import (
     AsyncOpenAI,
     APIConnectionError,
     RateLimitError,
-    APITimeoutError,
+   APITimeoutError,
 )
 from tenacity import (
-    retry,
+   retry,
+   RetryCallState, # Add import for retry state
     stop_after_attempt,
     wait_exponential,
     retry_if_exception_type,
@@ -44,6 +45,36 @@ from dotenv import load_dotenv
 # the OS environment variables take precedence over the .env file
 load_dotenv(dotenv_path=".env", override=False)
 
+# --- Start: Key Rotation Setup ---
+_openai_api_keys = [os.environ.get(f"KEY{i}") for i in range(1, 11)]
+_openai_api_keys = [key for key in _openai_api_keys if key] # Filter out None/empty keys
+
+# Fallback to OPENAI_API_KEY if no KEYn are set but OPENAI_API_KEY is
+if not _openai_api_keys and "OPENAI_API_KEY" in os.environ:
+   _openai_api_keys.append(os.environ["OPENAI_API_KEY"])
+
+_current_key_index = 0
+_num_keys = len(_openai_api_keys)
+
+def rotate_key_on_ratelimit(retry_state: RetryCallState):
+   """Callback for tenacity retry to rotate API key on RateLimitError."""
+   global _current_key_index
+   # Check if the exception is RateLimitError
+   if retry_state.outcome and isinstance(retry_state.outcome.exception(), RateLimitError):
+       if _num_keys > 1:
+           old_index = _current_key_index
+           _current_key_index = (_current_key_index + 1) % _num_keys
+           logger.warning(
+               f"RateLimitError encountered. Rotating OpenAI API key from index {old_index} to {_current_key_index}."
+           )
+       elif _num_keys == 1:
+            logger.warning(
+               "RateLimitError encountered, but only one API key is available. Retrying with the same key."
+           )
+       else:
+            # This case should ideally be caught before calling the API, but added for safety
+            logger.error("RateLimitError encountered, but no API keys are configured.")
+# --- End: Key Rotation Setup ---
 
 class InvalidResponseError(Exception):
     """Custom exception class for triggering retry mechanism"""
@@ -68,8 +99,18 @@ def create_openai_async_client(
     Returns:
         An AsyncOpenAI client instance.
     """
+   # Use explicitly passed api_key if provided
     if not api_key:
-        api_key = os.environ["OPENAI_API_KEY"]
+       # If no explicit key, try rotating keys
+       if not _openai_api_keys:
+           # If still no keys after checking KEY1-10 and OPENAI_API_KEY, raise error
+           raise ValueError("No OpenAI API keys found. Set OPENAI_API_KEY or KEY1...KEY10 environment variables.")
+       if _num_keys > 0:
+            api_key = _openai_api_keys[_current_key_index] # Use the current key from the list
+       else:
+            # Should have been caught above, but defensive check
+            raise ValueError("No OpenAI API keys available.")
+
 
     default_headers = {
         "User-Agent": f"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_8) LightRAG/{__api_version__}",
@@ -87,9 +128,10 @@ def create_openai_async_client(
     }
 
     if base_url is not None:
-        merged_configs["base_url"] = base_url
-    else:
-        merged_configs["base_url"] = os.environ["OPENAI_API_BASE"]
+       merged_configs["base_url"] = base_url
+    elif "OPENAI_API_BASE" in os.environ: # Check if env var exists before accessing
+       merged_configs["base_url"] = os.environ["OPENAI_API_BASE"]
+   # If neither base_url nor OPENAI_API_BASE is set, let AsyncOpenAI use its default
 
     return AsyncOpenAI(**merged_configs)
 
@@ -98,8 +140,9 @@ def create_openai_async_client(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=4, max=10),
     retry=retry_if_exception_type(
-        (RateLimitError, APIConnectionError, APITimeoutError, InvalidResponseError)
-    ),
+       (RateLimitError, APIConnectionError, APITimeoutError, InvalidResponseError)
+   ),
+   before_sleep=rotate_key_on_ratelimit,
 )
 async def openai_complete_if_cache(
     model: str,
@@ -337,8 +380,9 @@ async def nvidia_openai_complete(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=4, max=60),
     retry=retry_if_exception_type(
-        (RateLimitError, APIConnectionError, APITimeoutError)
-    ),
+       (RateLimitError, APIConnectionError, APITimeoutError)
+   ),
+   before_sleep=rotate_key_on_ratelimit,
 )
 async def openai_embed(
     texts: list[str],
