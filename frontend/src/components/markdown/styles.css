@@ -1,0 +1,130 @@
+.theme-light {
+  --background: #d5d6db;
+  --foreground: #393b58;
+  --border: #dcdee2;
+  --head-bg: #bcbdc2;
+  --block: #c3c5c9;
+  --secondary-foreground: #9699a3;
+
+  --red: #8c4351;
+  --yellow: #8f5e15;
+  --green: #33635c;
+  --cyan: #0f4b6e;
+  --blue: #34548a;
+  --magenta: #5a4a78;
+}
+.theme-dark {
+  --background: #1a1b26;
+  --foreground: #c0caf5;
+  --border: #292e42;
+  --head-bg: #121218;
+  --block: #24283b;
+  --secondary-foreground: #565f89;
+
+  --red: #ff757f;
+  --yellow: #e0af65;
+  --green: #9ece6a;
+  --cyan: #7dcfff;
+  --blue: #7aa2f7;
+  --magenta: #bb9af7;
+}
+
+/* Headings (credit: https://github.com/Akifyss/obsidian-border)*/
+
+/* Test */
+body .md,
+.theme-dark .md,
+.theme-light .md {
+  font-family: var(--default-font);
+  color: var(--foreground);
+  background-color: var(--background);
+}
+
+.md {
+  position: relative;
+}
+.md > * {
+  all: revert;
+}
+
+.md :is(h1, h2, h3, h4, h5, h6) {
+  font-weight: 700;
+}
+.md h1 {
+  color: var(--red);
+  font-size: xxx-large;
+}
+.md h2 {
+  color: var(--yellow);
+  font-size: xx-large;
+}
+.md h3 {
+  color: var(--green);
+  font-size: x-large;
+}
+.md h4 {
+  color: var(--cyan);
+  font-size: larger;
+}
+.md h5 {
+  color: var(--blue);
+  font-size: large;
+}
+.md h6 {
+  color: var(--magenta);
+  /* font-size: medium; */
+}
+.md a {
+  text-decoration: none;
+  color: var(--magenta);
+}
+.md a:hover {
+  text-decoration: underline;
+}
+.md table {
+  width: 100% !important;
+  border: 1px solid var(--border);
+  border-collapse: collapse;
+  border-radius: 10px;
+  background-color: var(--background);
+}
+.md table tr {
+  /* background-color: var(--head-bg); */
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 0;
+  border-radius: 10px;
+}
+
+.md table thead {
+  background: var(--head-bg);
+}
+
+.md table :is(th, td) {
+  border-right: 1px solid var(--border);
+  padding: 0.75rem;
+  border-radius: 10px;
+}
+
+.md hr {
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+.md :is(blockquote, pre) {
+  /* background-color: var(--block); */
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+}
+
+.md :is(ul, li)::marker {
+  color: var(--secondary-foreground);
+}
+
+.md em {
+  color: var(--cyan);
+}
+
+.md pre :has(> code),
+.md code {
+  background-color: var(--block) !important;
+}

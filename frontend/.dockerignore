@@ -1,0 +1,26 @@
+# Node modules should not be included in the image
+node_modules/
+
+# Ignore build output (if it exists locally)
+.next/
+
+# Ignore environment files
+.env
+.env.local
+.env.development
+.env.production
+
+# Ignore logs
+npm-debug.log
+yarn-error.log
+
+# Ignore Docker-specific files
+Dockerfile
+docker-compose.yml
+
+# Ignore editor and OS files
+.DS_Store
+*.swp
+*.tmp
+
+
